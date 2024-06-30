@@ -25,14 +25,23 @@ install_ubuntu() {
 
 install_centos() {
 
+#cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+#[kubernetes]
+#name=Kubernetes
+#baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+#enabled=1
+#gpgcheck=1
+#gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+#exclude=kubelet kubeadm kubectl
+#EOF
+
 cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-exclude=kubelet kubeadm kubectl
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
 EOF
   
 sudo setenforce 0
@@ -70,6 +79,8 @@ if [ -f /etc/os-release ];then
    elif [ $osname == "amzn" ];then
        install_amzn
    elif [ $osname == "centos" ];then
+       install_centos
+   elif [ $osname == "ol" ];then
        install_centos
   fi
 else
