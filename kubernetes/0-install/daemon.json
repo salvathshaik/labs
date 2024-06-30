@@ -4,6 +4,5 @@
       "log-opts": {
       "max-size": "100m"
       },
-      "storage-driver": "overlay2",
-      "insecure-registries": [ "10.20.30.40:8001" ]
+      "storage-driver": "overlay2"
 }
