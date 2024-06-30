@@ -94,6 +94,9 @@ if [ -f /etc/os-release ];then
    elif [ $osname == "centos" ];then
        prepare_node
        create_cluster
+   elif [ $osname == "ol" ];then
+       prepare_node
+       create_cluster
   fi
 else
    echo "can not locate /etc/os-release - unable find the osname"
