@@ -42,6 +42,9 @@ if [ -f /etc/os-release ];then
    elif [ $osname == "centos" ];then
       arch=amd64
       install_linux "$arch"
+   elif [ $osname == "ol" ];then
+      arch=amd64
+      install_linux "$arch"
    fi
 else
    echo "can not locate /etc/os-release - unable find the osname"
