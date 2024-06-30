@@ -34,7 +34,8 @@ install_ubuntu() {
        else
           echo "docker-ce is successfully installed"
           yum install -y wget
-          sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
+          ##sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
+          sudo wget https://raw.githubusercontent.com/salwad-basha-shaik/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
           sudo service docker restart ; clear
        fi
     else
@@ -65,7 +66,8 @@ install_centos() {
        else
           echo "docker-ce is successfully installed"
           yum install -y wget
-          sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
+          ##sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
+          sudo wget https://raw.githubusercontent.com/salwad-basha-shaik/labs/master/kubernetes/0-install/daemon.json -P /etc/docker
           sudo service docker restart ; clear
        fi
     else
@@ -83,6 +85,9 @@ if [ -f /etc/os-release ];then
    elif [ $osname == "amzn" ];then
        install_centos
    elif [ $osname == "centos" ];then
+       install_centos
+   #below 'ol' is for oracle linux 8 installation same as centos
+   elif [ $osname == "ol" ];then
        install_centos
   fi
 else
