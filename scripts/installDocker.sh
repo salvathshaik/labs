@@ -49,7 +49,7 @@ install_centos() {
 
     which docker
     if [ $? -eq 0 ];then
-       sudo yum remove docker-client-latest docker-latest docker-latest-logrotate docker-logrotate docker-engine
+       sudo yum remove -y docker-client-latest docker-latest docker-latest-logrotate docker-logrotate docker-engine
        cd /var/lib
        rm -rf docker
        yum clean
@@ -59,7 +59,7 @@ install_centos() {
 
     sudo yum install -y yum-utils   ## device-mapper-persistent-data lvm2
     sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    sudo yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
     if [ $? -eq 0 ];then
        if [ -f /etc/docker/daemon.json ];then
          echo "cgroup config is already configured skipping.."
