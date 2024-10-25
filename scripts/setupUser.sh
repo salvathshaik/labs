@@ -1,141 +1,111 @@
 #!/bin/bash
 
-now=`date +%d%b%Y-%H%M`
+# Date for backup suffix
+now=$(date +%d%b%Y-%H%M)
 
-exp()
-{
-	"$1" <(cat <<-EOF
-	spawn passwd $USER
-	expect "Enter new UNIX password:"
-	send -- "$passw\r"
-	expect "Retype new UNIX password:"
-	send -- "$passw\r"
-	expect eof
-	EOF
-	)
-	echo "password for USER $USER updated successfully - adding to sudoers file now"
+DEVOPS_USER="devops"
+DEVOPS_GROUP="devops"
+password="today@1234"
+
+exp() {
+    expect <<EOF
+    spawn passwd $DEVOPS_USER
+    expect "Enter new UNIX password:"
+    send "$password\r"
+    expect "Retype new UNIX password:"
+    send "$password\r"
+    expect eof
+EOF
+    echo "Password for user $DEVOPS_USER updated successfully - adding to sudoers file now"
 }
 
-setup_pass()
-{
+setup_pass() {
+    os_type=$1
 
-if [ $1 == "sles" ];then
-  
-   if [ ! -f /usr/bin/expect ] && [ ! -f /bin/expect ];then
-#        zypper -y update
-        zypper install -y expect
-        exp "/usr/bin/expect"
-   else
-        exp "/usr/bin/expect"
-   fi
+    case "$os_type" in
+        sles)
+            if ! command -v expect &>/dev/null; then
+                zypper install -y expect
+            fi
+            ;;
+        ubuntu)
+            if ! command -v expect &>/dev/null; then
+                apt-get update && apt-get install -y expect
+            fi
+            ;;
+        amzn|centos)
+            if ! command -v expect &>/dev/null; then
+                yum install -y epel-release expect
+            fi
+            ;;
+        *)
+            echo "Unsupported OS type: $os_type"
+            return 1
+            ;;
+    esac
 
-elif [ $1 == "ubuntu" ];then
-   
-   if [ ! -f /usr/bin/expect ] && [ ! -f /bin/expect ];then
-        apt-get update
-        apt install -y expect
-        exp "/usr/bin/expect"
-   else
-        exp "/usr/bin/expect"
-   fi
-
-elif [ $1 == "amzn" ];then
-
-   echo $1
-   if [ ! -f /usr/bin/expect ] && [ ! -f /bin/expect ];then
-        rpm -Uvh http://epel.mirror.net.in/epel/6/x86_64/epel-release-6-8.noarch.rpm
-        yum install -y expect
-        exp "/usr/bin/expect"
-   else
-        exp "/usr/bin/expect"
-   fi
-
-elif [ $1 == "centos" ];then
-
-   echo $1
-   if [ ! -f /usr/bin/expect ] && [ ! -f /bin/expect ];then
-        rpm -Uvh http://epel.mirror.net.in/epel/6/x86_64/epel-release-6-8.noarch.rpm
-        yum install -y expect
-        exp "/bin/expect"
-   else
-        exp "/bin/expect"
-   fi
-else
-   echo "could not find case $1"
-fi
-
+    exp
 }
 
-update_conf()
-{
-   sudofile="/etc/sudoers"
-   sshdfile="/etc/ssh/sshd_config"
-   mkdir -p /home/backup
-   if [ -f $sudofile ];then
-        cp -p $sudofile /home/backup/sudoers-$now
-        sa=`grep $USER $sudofile | wc -l`
-        if [ $sa -gt 0 ];then
-             echo "$USER user already present in $sudofile - no changes required"
-             grep $USER $sudofile
+update_conf() {
+    local sudoers_file="/etc/sudoers"
+    local sshd_config="/etc/ssh/sshd_config"
+
+    # Backup and update sudoers file
+    if [ -f "$sudoers_file" ]; then
+        cp -p "$sudoers_file" "/home/backup/sudoers-$now"
+        if ! grep -q "$DEVOPS_USER" "$sudoers_file"; then
+            echo "$DEVOPS_USER ALL=(ALL) NOPASSWD: ALL" >> "$sudoers_file"
+            echo "Added $DEVOPS_USER to sudoers file"
         else
-#             echo "$USER ALL=(ALL) ALL" >> $sudofile
-             echo "$USER ALL=(ALL) NOPASSWD: ALL" >> $sudofile
-             echo "updated the sudoers file successfully"
+            echo "$DEVOPS_USER already in sudoers file"
         fi
-   else
-        echo "could not find $sudofile"
-   fi
+    else
+        echo "Sudoers file not found"
+    fi
 
-   if [ -f $sshdfile ];then
-        cp -p $sshdfile /home/backup/sshd_config-$now
-        sed -i '/ClientAliveInterval.*0/d' $sshdfile
-        echo "ClientAliveInterval 240" >> $sshdfile
-        sed -i '/PasswordAuthentication.*no/d' $sshdfile
-        sed -i '/PasswordAuthentication.*yes/d' $sshdfile
-        echo "PasswordAuthentication yes" >> $sshdfile
-        #sed -i '/PermitRootLogin.*yes/d' $sshdfile
-        #sed -i '/PermitRootLogin.*prohibit-password/d' $sshdfile
-        #echo "PermitRootLogin yes" >> $sshdfile
-        echo "updated $sshdfile Successfully -- restarting sshd service"
+    # Backup and update sshd_config
+    if [ -f "$sshd_config" ]; then
+        cp -p "$sshd_config" "/home/backup/sshd_config-$now"
+        
+        # Update ClientAliveInterval and PasswordAuthentication
+        sed -i.bak '/^ClientAliveInterval/d' "$sshd_config"
+        echo "ClientAliveInterval 240" >> "$sshd_config"
+        
+        sed -i.bak '/^PasswordAuthentication /d' "$sshd_config"
+        echo "PasswordAuthentication yes" >> "$sshd_config"
+        
+        echo "Updated sshd_config and restarting SSH service"
         service sshd restart
-   else
-        echo "could not find $sshdfile"
-   fi
+    else
+        echo "sshd_config not found"
+    fi
 }
 
 ############### MAIN ###################
 
-USER="devops"
-GROUP="devops"
-passw="today@1234"
-
-if id -u "$USER" &>/dev/null; then 
-   echo "devops user exists no action required.."
-   exit 0
+# Determine OS name
+if [ -f /etc/os-release ]; then
+    osname=$(awk -F= '/^ID=/{print $2}' /etc/os-release | tr -d '"')
+    echo "Operating System: $osname"
 else
-  echo "devops user missing, continue to create it.."
-fi
-
-if [ -f /etc/os-release ];then
-   osname=`grep ID /etc/os-release | egrep -v 'VERSION|LIKE|VARIANT|PLATFORM' | cut -d'=' -f2 | sed -e 's/"//' -e 's/"//'`
-   echo $osname
-else
-   echo "can not locate /etc/os-release - unable find the osname"
-   exit 8
+    echo "Cannot locate /etc/os-release - unable to determine OS"
+    exit 8
 fi
 
 case "$osname" in
   sles|amzn|ubuntu|centos)
-     userdel -r $USER 
-     groupdel $GROUP
+     userdel -r "$DEVOPS_USER" &>/dev/null
+     groupdel "$DEVOPS_GROUP" &>/dev/null
      sleep 3
-     groupadd $GROUP
-     useradd $USER -m -d /home/$USER -s /bin/bash -g $GROUP
-     setup_pass $osname
+     groupadd "$DEVOPS_GROUP"
+     useradd "$DEVOPS_USER" -m -d "/home/$DEVOPS_USER" -s /bin/bash -g "$DEVOPS_GROUP"
+     setup_pass "$osname"
      update_conf
     ;;
   *)
-    echo "could not determine the correct osname -- found $osname"
+    echo "Unsupported OS: $osname"
     ;;
 esac
+
 exit 0
